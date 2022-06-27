@@ -44,4 +44,9 @@ id, password 는 compose.yml 파일에서 지정한 admin/admin 으로 접속
 
 
 
+## 저장된 로또 데이터 csv 파일 
+
+<img width="1406" alt="스크린샷 2022-06-27 오후 11 54 25" src="https://user-images.githubusercontent.com/76778082/175970701-abc60a7f-be70-425a-982e-0f6e65fb1835.png">
+
+
 
