@@ -1,6 +1,16 @@
 # airflow--
 로또데이터 자동화 pipline 구축
 
+## work flow 모형
+
+재현--> Launch(lotto 데이터 가져오기)(download_launches) --> 내 컴퓨터에 데이터 결괏값 저장(_get_lottos_data) --> 시스템알림( notify)   
+ 
+task:
+1.download_launches  
+2. _get_lottos_data  
+3. notify  
+
+
 # Usage  
 
 ### STEP 1.
