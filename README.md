@@ -65,3 +65,6 @@ id, password 는 compose.yml 파일에서 지정한 admin/admin 으로 접속
 
 
 
+
+### API JSON 출처
+"https://smok95.github.io/lotto/results/all.json 
