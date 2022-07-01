@@ -14,7 +14,7 @@ task 의존성:
 
 download_launches>> get_lottos_data >> notify
 
-1번이 완료돼야 2번이 시작돼고 2번이 완료되어야 3번이 시작된다.
+1번이 완료돼야 2번이 시작되고 2번이 완료되어야 3번이 시작된다.
 
 # Usage  
 
