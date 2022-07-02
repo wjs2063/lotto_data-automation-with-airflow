@@ -8,29 +8,23 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 import pandas as pd
 import os.path
+import pendulum
 from collections import defaultdict
 dag=DAG(
-    # DAG 이름
     dag_id="lotto",
-    #시작날짜
-    start_date=airflow.utils.dates.days_ago(300),
-    #스케쥴 실행간격
-    schedule_interval="@weekly",
+    start_date=airflow.utils.dates.days_ago(14),
+    schedule_interval="@daily",
 )
 
 download_launches=BashOperator(
-    # task _id 설정 
     task_id="download_launches",
-    # 모든회차의 로또번호를 json 형식으로 가져온다
     bash_command='curl -o /tmp/launches.json -L "https://smok95.github.io/lotto/results/all.json "',dag=dag,
 )
 
 
 def _get_lotto_data():
     pathlib.Path("/tmp/lottos").mkdir(parents=True,exist_ok=True)
-    # 로또파일이 존재하지않으면 json 형태를 dataframe 으로 저장
     if not os.path.isfile('/tmp/lottos/lottodata.csv'):
-        # launches.json 에있는 모든 로또 번호, 당첨금 등등을 저장
         lotto=defaultdict(list)
         
         with open("/tmp/launches.json") as f:
@@ -46,30 +40,38 @@ def _get_lotto_data():
                 lotto['number_6'].append(data['numbers'][5])
                 lotto['bonus_no'].append(data['bonus_no'])
         df=pd.DataFrame(data=lotto)
-        #csv 파일로 저장
         df.to_csv('/tmp/lottos/lottodata.csv')
         return 0
-    # 데이터가 존재한다면 csv파일을 불러와서 최신회차 데이터만 추가한후 다시 저장
-    df=pd.read_csv('/tmp/lottos/lottodata.csv')
+    df=pd.read_csv('/tmp/lottos/lottodata.csv',index_col=0)
     l=list(df['draw_no'])
-    url=f'https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo={int(l[-1])+1}'
+    #모든회차의 json을 불러온다음 
+    url=f'https://smok95.github.io/lotto/results/all.json'
     resp=requests.get(url)
     latest_data=resp.json()
-    # 만약 최신회차가 아직없다면?
-    if latest_data['returnValue']=='fail':
-        print('아직 로또추첨이 완료되지않았거나 업로드되지않았습니다')
+    # 만약 latest_data 최신회차랑 내 csv파일의 최신회차가 다르다면 업데이트
+    no=latest_data[-1]['draw_no']
+    # now : 현재 내가 가지고있는 csv의 회차 목록
+    now=list(df['draw_no'])
+    if no==now[-1]:
         return 0
-    lotto=defaultdict(list)
-    lotto['draw_no'].append(latest_data['draw_no'])
-    lotto['date'].append(data['date'])
-    lotto['number_1'].append(latest_data['numbers'][0])
-    lotto['number_2'].append(latest_data['numbers'][1])
-    lotto['number_3'].append(latest_data['numbers'][2])
-    lotto['number_4'].append(latest_data['numbers'][3])
-    lotto['number_5'].append(latest_data['numbers'][4])
-    lotto['number_6'].append(latest_data['numbers'][5])
-    lotto['bonus_no'].append(latest_data['bonus_no'])
-    df.append(lotto)
+    for i in range(now[-1]+1,no+1):
+        url=f'https://smok95.github.io/lotto/results/{i}.json'
+
+        resp=requests.get(url)
+        latest_data=resp.json()
+
+        lotto=defaultdict(list)
+        lotto['draw_no'].append(latest_data['draw_no'])
+        lotto['date'].append(latest_data['date'])
+        lotto['number_1'].append(latest_data['numbers'][0])
+        lotto['number_2'].append(latest_data['numbers'][1])
+        lotto['number_3'].append(latest_data['numbers'][2])
+        lotto['number_4'].append(latest_data['numbers'][3])
+        lotto['number_5'].append(latest_data['numbers'][4])
+        lotto['number_6'].append(latest_data['numbers'][5])
+        lotto['bonus_no'].append(latest_data['bonus_no'])
+        df1=pd.DataFrame(data=lotto)
+        df=pd.concat([df,df1],ignore_index=True)
     df.to_csv('/tmp/lottos/lottodata.csv')
 
 get_lotto_data=PythonOperator(
@@ -77,6 +79,8 @@ get_lotto_data=PythonOperator(
     python_callable=_get_lotto_data,
     dag=dag,
 )
+
+
 
 notify=BashOperator(
     task_id='notify',
@@ -86,6 +90,9 @@ notify=BashOperator(
 
 
 download_launches>>get_lotto_data>>notify
+
+
+
 
 
 
